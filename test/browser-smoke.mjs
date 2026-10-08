@@ -127,6 +127,85 @@ try {
   // Import the downloaded project back into the editor.
   await page.locator('#fileInput').setInputFiles({name:'roundtrip.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});
   assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  // Alpha 0.2: sample a live computed keyframe (not the nearest keyframe copy).
+  await scrubTo(page,400);
+  const sampledBefore=await page.locator('#previewTarget').evaluate(el=>{
+    const style=getComputedStyle(el);
+    return {opacity:style.opacity,transform:style.transform};
+  });
+  await page.locator('#addFrameButton').click();
+  assert.match(await page.locator('#frameCount').textContent(),/4 frames/);
+  assert.equal(await page.locator('#keyframePosition').inputValue(),'25');
+  assert.equal(await page.locator('[data-frame-property="opacity"]').inputValue(),sampledBefore.opacity);
+  assert.equal(await page.locator('[data-frame-property="transform"]').inputValue(),sampledBefore.transform);
+
+  // Single-keyframe pointer drag moves the diamond and adds one undo step.
+  const trackWidth=await page.locator('.keyframe-track').first().evaluate(el=>el.getBoundingClientRect().width);
+  let marker=page.locator('.keyframe-marker[data-frame-index="1"]').first();
+  let box=await marker.boundingBox();
+  let mx=box.x+box.width/2,my=box.y+box.height/2;
+  await page.mouse.move(mx,my);
+  await page.mouse.down();
+  await page.mouse.move(mx+trackWidth*0.1,my,{steps:4});
+  await page.mouse.up();
+  const movedOffset=Number(await page.locator('#keyframePosition').inputValue());
+  assert(movedOffset>=33 && movedOffset<=37,'Dragged position: '+movedOffset);
+  await page.locator('#undoButton').click();
+  assert.equal(await page.locator('.keyframe-marker[data-frame-index="1"]').first().evaluate(el=>Math.round(parseFloat(el.style.left))),25);
+  await page.locator('#redoButton').click();
+  assert(Math.round(parseFloat(await page.locator('.keyframe-marker[data-frame-index="1"]').first().getAttribute('style').then(s=>s.match(/left:\\s*([\\d.]+)/)?.[1])))>=33);
+
+  // Modifier selection and group drag preserve relative spacing; undo is atomic.
+  await page.locator('#undoButton').click();
+  marker=page.locator('.keyframe-marker[data-frame-index="1"]').first();
+  box=await marker.boundingBox();
+  await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+  const second=page.locator('.keyframe-marker[data-frame-index="2"]').first();
+  const secondBox=await second.boundingBox();
+  await page.keyboard.down('Control');
+  await page.mouse.click(secondBox.x+secondBox.width/2,secondBox.y+secondBox.height/2);
+  await page.keyboard.up('Control');
+  assert.equal((await page.locator('#selectedCount').textContent()).trim(),'2 selected');
+  marker=page.locator('.keyframe-marker[data-frame-index="1"]').first();
+  box=await marker.boundingBox();
+  mx=box.x+box.width/2;my=box.y+box.height/2;
+  await page.mouse.move(mx,my);await page.mouse.down();
+  await page.mouse.move(mx+trackWidth*0.06,my,{steps:4});await page.mouse.up();
+  const groupOffsets=await page.locator('.keyframe-marker.marker-selected').evaluateAll(elements=>
+    [...new Set(elements.map(el=>Math.round(parseFloat(el.style.left))))].sort((a,b)=>a-b));
+  assert.deepEqual(groupOffsets,[31,56]);
+  await page.locator('#undoButton').click();
+  const revertedOffsets=await page.locator('.keyframe-marker').evaluateAll(elements=>
+    [...new Set(elements.map(el=>Math.round(parseFloat(el.style.left))))].sort((a,b)=>a-b));
+  assert.deepEqual(revertedOffsets,[0,25,50,100]);
+
+  // Interactive easing editor actually modifies core timing and the native effect.
+  await page.locator('[data-panel="motion"]').click();
+  const curveHandle=page.locator('[data-curve-handle="0"]');
+  const curveBefore=await page.locator('input[data-timing="easing"]').inputValue();
+  const curveBox=await curveHandle.boundingBox();
+  await page.mouse.move(curveBox.x+curveBox.width/2,curveBox.y+curveBox.height/2);
+  await page.mouse.down();
+  await page.mouse.move(curveBox.x+curveBox.width/2+20,curveBox.y+curveBox.height/2+25,{steps:4});
+  await page.mouse.up();
+  const curveAfter=await page.locator('input[data-timing="easing"]').inputValue();
+  assert.notEqual(curveAfter,curveBefore);
+  assert.match(curveAfter,/^cubic-bezier\\(/);
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].effect.getTiming().easing),curveAfter);
+  await page.locator('[data-curve-handle="0"]').focus();
+  await page.keyboard.press('ArrowRight');
+  assert.notEqual(await page.locator('input[data-timing="easing"]').inputValue(),curveAfter);
+  await page.locator('select[data-timing="easing"]').selectOption('steps(4, end)');
+  assert.equal(await page.locator('#convertCurve').isVisible(),true);
+  await page.locator('#convertCurve').click();
+  assert.equal(await page.locator('#curveGraph').isVisible(),true);
+
+  // Timeline represents active cycle. Native delay is included when seeking.
+  await page.locator('[data-timing="delay"]').fill('200');
+  await page.locator('[data-timing="delay"]').press('Tab');
+  await scrubTo(page,400);
+  const realTime=await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].currentTime);
+  assert(Math.abs(realTime-600)<0.01,'Delay mapping: '+realTime);
   // Responsive integrity and touch-size viewport: mobile must stay operable.
   await page.setViewportSize({width:390,height:844});
   const mobile=await page.evaluate(()=>({
