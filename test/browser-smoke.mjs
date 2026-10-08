@@ -37,6 +37,16 @@ try {
   const response=await page.goto(base);
   assert.equal(response.status(),200);
   await page.locator('.preset-card').first().waitFor();
+  const brandLogo=page.locator('.brand-logo');
+  assert.equal(await brandLogo.count(),1,"The canonical PFx logo must appear once in navbar");
+  const logo=await brandLogo.evaluate(async element=>{
+    await element.decode();
+    return {src:element.currentSrc,width:element.naturalWidth,height:element.naturalHeight};
+  });
+  assert(logo.src.includes('/PFx-CSS-Motion/brand/logo.svg'),"Logo must be served from the project's own assets");
+  assert(logo.width>0 && logo.height>0,"Original PFx SVG did not render");
+  const iconHref=await page.locator('link[rel="icon"]').getAttribute('href');
+  assert(iconHref.includes('brand/logo.svg'),"Browser favicon should use the original logo");
   assert.equal(await page.locator('.preset-card').count(),4);
   assert.equal(await page.locator('.preview-card').count(),1);
   assert.equal(await page.locator('.keyframe-marker').count(),6);
