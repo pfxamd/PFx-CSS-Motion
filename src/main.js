@@ -1,4 +1,8 @@
 import './style.css';
+import {
+  shiftKeyframes, insertSampledFrame, parseCubicCurve,
+  toCubicCurveString, moveCurveHandle
+} from './timeline-editor.js';
 import { createBrowserAnimation, compileCSS, parseEasing } from '@pfxamd/css-motion-core';
 import {
   PRESETS, makePreset, copyMotion, allProperties, updateTiming, updateFrame,
@@ -17,6 +21,7 @@ const state = {
   object: 'card',
   panel: 'motion',
   selectedFrame: 1,
+  selectedFrames: [1],
   time: 600,
   looping: false,
   undo: [],
@@ -49,6 +54,14 @@ const previewMotion=()=>state.looping
   ? {...state.motion,timing:{...state.motion.timing,iterations:Infinity}}
   : state.motion;
 const clampedTime=value=>Math.min(duration(),Math.max(0,Number(value)||0));
+const animationTime=value=>value+state.motion.timing.delay;
+const cycleTime=value=>{
+  const delta=value-state.motion.timing.delay;
+  if(state.looping || state.motion.timing.iterations>1) {
+    return ((delta%duration())+duration())%duration();
+  }
+  return clampedTime(delta);
+};
 
 function cancelFrame() {
   if(frameRequest)cancelAnimationFrame(frameRequest);
@@ -119,7 +132,7 @@ function initAnimation() {
   if(controller) {controller.dispose();controller=null;}
   controller=createBrowserAnimation(byId('previewTarget'),previewMotion());
   controller.setRate(state.playbackSpeed);
-  controller.seek(clampedTime(state.time));
+  controller.seek(animationTime(clampedTime(state.time)));
   updateTimeUI();
 }
 function renderAll({subject=false}={}) {
@@ -153,10 +166,11 @@ function tick() {
   const animation=controller.animation;
   const current=Number(animation.currentTime??0);
   if(Number.isFinite(current)) {
-    state.time=state.looping ? ((current%duration())+duration())%duration() : clampedTime(current);
+    state.time=cycleTime(current);
     updateTimeUI();
   }
   if(animation.playState==='finished' && !state.looping) {
+    state.time=duration();
     state.playing=false;
     updateTimeUI();
     return;
@@ -172,7 +186,7 @@ function togglePlay() {
     cancelFrame();
   } else {
     if(!state.looping && clampedTime(state.time)>=duration()) {
-      state.time=0;controller.seek(0);
+      state.time=0;controller.seek(animationTime(0));
     }
     controller.play();
     state.playing=true;
@@ -190,7 +204,7 @@ function seek(time, {pause=true}={}) {
     cancelFrame();
   }
   state.time=clampedTime(time);
-  controller.seek(state.time);
+  controller.seek(animationTime(state.time));
   updateTimeUI();
 }
 function setLoop(enabled) {
@@ -203,20 +217,22 @@ function setLoop(enabled) {
   const motion={...base,timing:{...base.timing,iterations:enabled?Infinity:base.timing.iterations}};
   controller=createBrowserAnimation(byId('previewTarget'),motion);
   controller.setRate(state.playbackSpeed);
-  controller.seek(at);
+  controller.seek(animationTime(at));
   state.playing=false;
   if(wasPlaying)togglePlay();
   updateTimeUI();
 }
 
-function updateMotion(next,{index=state.selectedFrame,preset=null}={}) {
+function updateMotion(next,{index=state.selectedFrame,preset=null,selection=null}={}) {
   const previous=copyMotion(state.motion);
   const oldTime=state.time;
   const oldPreset=state.preset;
+  const oldSelected=[...state.selectedFrames];
   try {
     compiledMotion(next);
     state.motion=next;
     state.selectedFrame=Math.max(0,Math.min(next.keyframes.length-1,index));
+    state.selectedFrames=selection?.length ? [...selection] : [state.selectedFrame];
     state.time=clampedTime(oldTime);
     state.preset=preset;
     renderAll();
@@ -226,7 +242,7 @@ function updateMotion(next,{index=state.selectedFrame,preset=null}={}) {
     updateHistoryButtons();
     return true;
   } catch(error) {
-    state.motion=previous;state.preset=oldPreset;state.time=oldTime;
+    state.motion=previous;state.preset=oldPreset;state.time=oldTime;state.selectedFrames=oldSelected;
     try{renderAll();}catch{}
     toast(error.message,true);
     return false;
@@ -250,6 +266,7 @@ function history(direction) {
   state.time=snapshot.time;
   state.preset=snapshot.preset;
   state.selectedFrame=Math.min(state.selectedFrame,state.motion.keyframes.length-1);
+  state.selectedFrames=[state.selectedFrame];
   state.looping=false;
   renderAll();
   toast(direction==='undo'?'Change undone':'Change restored');
@@ -261,6 +278,69 @@ function optionList(values,selected) {
 const control = (label,field,value,opts={}) => `
   <label class="field"><span class="field-heading">${escapeHtml(label)}${opts.suffix?`<small>${opts.suffix}</small>`:''}</span>
   <input ${opts.number?'type="number"':'type="text"'} data-timing="${field}" value="${escapeHtml(value)}" ${opts.number?'step="'+(opts.step??1)+'"':''} ${opts.min!==undefined?'min="'+opts.min+'"':''} ${opts.max!==undefined?'max="'+opts.max+'"':''} spellcheck="false"></label>`;
+
+const CURVE_PLOT={width:300,height:280,left:40,right:260,zero:210,scale:105};
+function curvePoint(x,y) {
+  return {x: CURVE_PLOT.left+(CURVE_PLOT.right-CURVE_PLOT.left)*x,
+    y: CURVE_PLOT.zero-CURVE_PLOT.scale*y};
+}
+function curveDrawing(points) {
+  const a=curvePoint(points[0],points[1]);
+  const b=curvePoint(points[2],points[3]);
+  const start=curvePoint(0,0),end=curvePoint(1,1);
+  return {
+    a,b,start,end,
+    path:'M '+start.x+' '+start.y+' C '+a.x+' '+a.y+', '+b.x+' '+b.y+', '+end.x+' '+end.y
+  };
+}
+function renderCurveEditor(easing) {
+  const parsed=parseCubicCurve(easing);
+  if(!parsed) {
+    return '<div class="curve-editor"><div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Curve editor</span></div>'+
+    '<p class="curve-hint">Step easing cannot be edited with Bézier handles.</p>'+
+    '<button type="button" class="button button-muted" id="convertCurve">Use cubic Bézier</button></div>';
+  }
+  const curve=curveDrawing(parsed);
+  return `<div class="curve-editor">
+    <div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Drag the handles</span></div>
+    <svg id="curveGraph" viewBox="0 0 300 280" aria-label="Interactive Bézier easing graph" role="group">
+      <rect x="40" y="10" width="220" height="265" fill="transparent"/>
+      <path d="M 40 210 H 260 M 40 105 H 260 M 40 10 V 275 M 260 10 V 275" class="curve-gridline"/>
+      <path d="M 40 210 L 260 105" class="curve-diagonal"/>
+      <line id="curveLine0" x1="40" y1="210" x2="${curve.a.x}" y2="${curve.a.y}" class="curve-tangent"/>
+      <line id="curveLine1" x1="${curve.b.x}" y1="${curve.b.y}" x2="260" y2="105" class="curve-tangent"/>
+      <path id="curvePath" d="${curve.path}" class="curve-path"/>
+      <circle cx="40" cy="210" r="4" class="curve-anchor"/>
+      <circle cx="260" cy="105" r="4" class="curve-anchor"/>
+      <circle data-curve-handle="0" cx="${curve.a.x}" cy="${curve.a.y}" r="11" class="curve-handle"
+        role="slider" tabindex="0" aria-label="First Bézier control point" aria-valuetext="${parsed[0]}, ${parsed[1]}"/>
+      <circle data-curve-handle="1" cx="${curve.b.x}" cy="${curve.b.y}" r="11" class="curve-handle"
+        role="slider" tabindex="0" aria-label="Second Bézier control point" aria-valuetext="${parsed[2]}, ${parsed[3]}"/>
+    </svg>
+    <div class="curve-values" id="curveValues">
+      <span>P1 <strong>${parsed[0].toFixed(2)}, ${parsed[1].toFixed(2)}</strong></span>
+      <span>P2 <strong>${parsed[2].toFixed(2)}, ${parsed[3].toFixed(2)}</strong></span>
+    </div><p class="curve-hint">Shift the handles to reshape acceleration. Arrow keys adjust the focused handle.</p>
+  </div>`;
+}
+function paintCurve(points) {
+  const svg=byId('curveGraph');
+  if(!svg) return;
+  const {a,b,path}=curveDrawing(points);
+  svg.querySelector('#curvePath').setAttribute('d',path);
+  svg.querySelector('#curveLine0').setAttribute('x2',String(a.x));
+  svg.querySelector('#curveLine0').setAttribute('y2',String(a.y));
+  svg.querySelector('#curveLine1').setAttribute('x1',String(b.x));
+  svg.querySelector('#curveLine1').setAttribute('y1',String(b.y));
+  for (const [i,point] of [[0,a],[1,b]]) {
+    const node=svg.querySelector('[data-curve-handle="'+i+'"]');
+    node.setAttribute('cx',String(point.x));
+    node.setAttribute('cy',String(point.y));
+    node.setAttribute('aria-valuetext',points[i*2]+', '+points[i*2+1]);
+  }
+  byId('curveValues').innerHTML='<span>P1 <strong>'+points[0].toFixed(2)+', '+points[1].toFixed(2)+'</strong></span>'+
+   '<span>P2 <strong>'+points[2].toFixed(2)+', '+points[3].toFixed(2)+'</strong></span>';
+}
 
 function renderInspector() {
   document.querySelectorAll('[data-panel]').forEach(button=>{
@@ -287,6 +367,7 @@ function renderInspector() {
         ],t.easing)}${!['linear','ease','ease-in','ease-out','ease-in-out','cubic-bezier(0.22, 1, 0.36, 1)','cubic-bezier(0.34, 1.56, 0.64, 1)','cubic-bezier(0.16, 1, 0.3, 1)','steps(4, end)'].includes(t.easing)?`<option value="${escapeHtml(t.easing)}" selected>Custom · ${escapeHtml(t.easing)}</option>`:''}</select>
         </label>
         ${control('Custom easing','easing',t.easing,{suffix:'CSS'})}
+        ${renderCurveEditor(t.easing)}
       </div>
       <div class="inspector-section"><div class="section-title"><span>02</span><strong>Playback</strong></div>
         <label class="field"><span class="field-heading">Iterations <small>repeat count</small></span><input data-timing="iterations" type="number" min="0" max="1000" step="0.5" value="${t.iterations}"></label>
@@ -329,21 +410,36 @@ function renderInspector() {
 function renderTimeline() {
   const motion=state.motion;
   byId('frameCount').textContent=motion.keyframes.length+' frames';
+  byId('selectedCount').textContent=state.selectedFrames.length+' selected';
   byId('rulerMarks').innerHTML=Array.from({length:6},(_,index)=>`<span>${(duration()/1000*index/5).toFixed(2)}</span>`).join('');
   const properties=allProperties(motion);
   byId('propertyTracks').innerHTML=properties.map((name,row)=>`
     <div class="property-track"><div class="track-label"><span class="track-label-icon">${['◇','≈','✳','◌'][row%4]}</span><span title="${escapeHtml(name)}">${escapeHtml(name)}</span></div>
     <div class="keyframe-track" style="--playhead:${clampedTime(state.time)/duration()*100}%">
-      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrame===index?'marker-selected':''}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
+      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrames.includes(index)?'marker-selected':''}" aria-pressed="${state.selectedFrames.includes(index)}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
     </div></div>`).join('');
   if(!properties.length)byId('propertyTracks').innerHTML='<p class="no-properties">Select a keyframe and add a property.</p>';
   updateTimeUI();
 }
-function selectFrame(index) {
-  state.selectedFrame=Math.max(0,Math.min(state.motion.keyframes.length-1,index));
+function selectFrame(index,{additive=false,range=false,preserve=false}={}) {
+  const max=state.motion.keyframes.length-1;
+  index=Math.max(0,Math.min(max,index));
+  if(preserve) {
+    // Dragging a member of a multi-selection moves the whole group.
+  } else if(range) {
+    const from=Math.min(state.selectedFrame,index),to=Math.max(state.selectedFrame,index);
+    state.selectedFrames=Array.from({length:to-from+1},(_,i)=>from+i);
+  } else if(additive) {
+    const set=new Set(state.selectedFrames);
+    if(set.has(index) && set.size>1)set.delete(index);
+    else set.add(index);
+    state.selectedFrames=[...set].sort((a,b)=>a-b);
+  } else {
+    state.selectedFrames=[index];
+  }
+  state.selectedFrame=index;
   state.panel='keyframe';
-  state.time=state.motion.keyframes[state.selectedFrame].offset*duration();
-  seek(state.time);
+  seek(state.motion.keyframes[index].offset*duration());
   renderTimeline();
   renderInspector();
 }
@@ -360,6 +456,157 @@ async function copyCSS() {
   try{await navigator.clipboard.writeText(compiled().css);toast('CSS copied to clipboard')}catch{toast('Clipboard unavailable. Use Download .css instead.',true)}
 }
 
+function sampleKeyframe() {
+  try {
+    if(state.playing)seek(state.time);
+    const offset=state.time/duration();
+    const computed=getComputedStyle(byId('previewTarget'));
+    const sampled={};
+    for(const property of allProperties(state.motion)) {
+      const cssProperty=property.startsWith('--')?property:
+        property.replace(/[A-Z]/g,character=>'-'+character.toLowerCase());
+      sampled[property]=computed.getPropertyValue(cssProperty).trim();
+    }
+    const result=insertSampledFrame(state.motion,offset,sampled);
+    if(updateMotion(result.motion,{index:result.index})) {
+      state.panel='keyframe';
+      renderInspector();
+      toast('Keyframe sampled from live preview');
+    }
+  }catch(error){toast(error.message,true);}
+}
+
+let pointerSession=null;
+function cancelPendingPointer() {
+  if(pointerSession?.raf)cancelAnimationFrame(pointerSession.raf);
+  if(pointerSession)pointerSession.raf=0;
+}
+function frameMove(session,delta) {
+  const result=shiftKeyframes(session.originalMotion,session.selected,delta);
+  const primaryIndex=result.originalIndexes.indexOf(session.primary);
+  state.motion=result.motion;
+  state.selectedFrames=result.selection;
+  state.selectedFrame=primaryIndex;
+  state.time=state.motion.keyframes[primaryIndex].offset*duration();
+  renderTimeline();
+  renderInspector();
+  initAnimation();
+  return result.delta;
+}
+function curveMove(session,clientX,clientY) {
+  const bounds=session.bounds;
+  const x=(clientX-bounds.left)/bounds.width*CURVE_PLOT.width;
+  const y=(clientY-bounds.top)/bounds.height*CURVE_PLOT.height;
+  const values=moveCurveHandle(session.values,session.handle,
+    (x-CURVE_PLOT.left)/(CURVE_PLOT.right-CURVE_PLOT.left),
+    (CURVE_PLOT.zero-y)/CURVE_PLOT.scale);
+  session.current=values;
+  paintCurve(values);
+  controller?.animation.effect.updateTiming({easing:toCubicCurveString(values)});
+}
+function beginPointerSession(event) {
+  if(event.button!==0 || pointerSession)return;
+  const curve=event.target.closest('[data-curve-handle]');
+  if(curve) {
+    const values=parseCubicCurve(state.motion.timing.easing);
+    if(!values)return;
+    event.preventDefault();
+    const svg=byId('curveGraph');
+    pointerSession={
+      kind:'curve',pointerId:event.pointerId,
+      values,current:values,handle:Number(curve.dataset.curveHandle),
+      bounds:svg.getBoundingClientRect(),moved:false,
+      originalTime:state.time
+    };
+    curve.focus({preventScroll:true});
+    return;
+  }
+  const marker=event.target.closest('.keyframe-marker');
+  if(!marker)return;
+  event.preventDefault();
+  const index=Number(marker.dataset.frameIndex);
+  const track=marker.closest('.keyframe-track');
+  const bounds=track.getBoundingClientRect();
+  selectFrame(index,{additive:event.ctrlKey||event.metaKey,range:event.shiftKey,
+    preserve:!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&state.selectedFrames.includes(index)});
+  if(!state.selectedFrames.includes(index))return;
+  pointerSession={
+    kind:'frame',pointerId:event.pointerId,originalMotion:copyMotion(state.motion),
+    originalTime:state.time,originalPreset:state.preset,
+    selected:[...state.selectedFrames],primary:index,
+    initialX:event.clientX,pendingDelta:0,
+    width:bounds.width,moved:false,raf:0
+  };
+}
+function updatePointerSession(event) {
+  const session=pointerSession;
+  if(!session || event.pointerId!==session.pointerId)return;
+  if(session.kind==='curve') {
+    event.preventDefault();
+    session.moved=true;
+    try{curveMove(session,event.clientX,event.clientY)}catch(error){toast(error.message,true);}
+    return;
+  }
+  if(Math.abs(event.clientX-session.initialX)<3 && !session.moved)return;
+  session.moved=true;
+  event.preventDefault();
+  session.pendingDelta=(event.clientX-session.initialX)/Math.max(1,session.width);
+  if(session.raf)return;
+  session.raf=requestAnimationFrame(()=>{
+    session.raf=0;
+    if(pointerSession!==session)return;
+    frameMove(session,session.pendingDelta);
+  });
+}
+function completePointerSession(event,cancel=false) {
+  const session=pointerSession;
+  if(!session || event.pointerId!==session.pointerId)return;
+  pointerSession=null;
+  if(session.kind==='curve') {
+    if(cancel || !session.moved) {
+      controller?.animation.effect.updateTiming({easing:state.motion.timing.easing});
+      if(!cancel)return;
+    } else {
+      const next=toCubicCurveString(session.current);
+      if(next!==state.motion.timing.easing)updateMotion(updateTiming(state.motion,'easing',next));
+      return;
+    }
+    renderInspector();
+    return;
+  }
+  cancelPendingPointer();
+  if(session.raf)cancelAnimationFrame(session.raf);
+  const changed=session.moved &&
+    Math.abs(session.pendingDelta)>0.00001;
+  if(!changed && !cancel)return;
+  if(!cancel && changed)frameMove(session,session.pendingDelta);
+  const finalMotion=state.motion;
+  const finalSelection=[...state.selectedFrames];
+  const finalIndex=state.selectedFrame;
+  const finalTime=state.time;
+  state.motion=session.originalMotion;
+  state.time=session.originalTime;
+  state.preset=session.originalPreset;
+  if(cancel) {
+    state.selectedFrames=[...session.selected];
+    state.selectedFrame=session.primary;
+    renderAll();
+    return;
+  }
+  if(JSON.stringify(finalMotion.keyframes)===JSON.stringify(session.originalMotion.keyframes)) {
+    state.selectedFrames=finalSelection;
+    state.selectedFrame=finalIndex;
+    renderAll();
+    return;
+  }
+  if(updateMotion(finalMotion,{index:finalIndex,selection:finalSelection}))
+    seek(finalTime);
+}
+document.addEventListener('pointerdown',beginPointerSession);
+window.addEventListener('pointermove',updatePointerSession,{passive:false});
+window.addEventListener('pointerup',event=>completePointerSession(event));
+window.addEventListener('pointercancel',event=>completePointerSession(event,true));
+
 document.addEventListener('click',event=>{
   const preset=event.target.closest('[data-preset]');
   if(preset){const id=preset.dataset.preset;updateMotion(makePreset(id),{index:1,preset:id});seek(duration()/2);return}
@@ -373,7 +620,10 @@ document.addEventListener('click',event=>{
   const panel=event.target.closest('[data-panel]');
   if(panel){state.panel=panel.dataset.panel;renderInspector();return}
   const marker=event.target.closest('[data-frame-index]');
-  if(marker){selectFrame(Number(marker.dataset.frameIndex));return}
+  if(marker){
+    if(event.detail===0)selectFrame(Number(marker.dataset.frameIndex));
+    return;
+  }
   const deletion=event.target.closest('[data-delete-property]');
   if(deletion){
     const property=deletion.dataset.deleteProperty;
@@ -387,11 +637,10 @@ document.addEventListener('click',event=>{
     case 'toStart':seek(0);break;
     case 'toEnd':seek(duration());break;
     case 'repeatButton':setLoop(!state.looping);break;
-    case 'addFrameButton':{
-      const result=insertFrame(state.motion,clampedTime(state.time)/duration());
-      if(updateMotion(result.motion,{index:result.index}))state.panel='keyframe',renderInspector();
+    case 'addFrameButton':sampleKeyframe();break;
+    case 'convertCurve':
+      updateMotion(updateTiming(state.motion,'easing','cubic-bezier(0.25, 0.1, 0.25, 1)'));
       break;
-    }
     case 'removeFrameButton':
       if(updateMotion(deleteFrame(state.motion,state.selectedFrame),{index:Math.max(0,state.selectedFrame-1)}))toast('Keyframe removed');
       break;
@@ -453,6 +702,41 @@ byId('fileInput').addEventListener('change',async event=>{
 });
 document.addEventListener('keydown',event=>{
   const tag=event.target?.tagName;
+  const editable=['INPUT','TEXTAREA','SELECT'].includes(tag) ||
+    event.target?.isContentEditable;
+  const handle=event.target?.closest?.('[data-curve-handle]');
+  if(handle && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) {
+    event.preventDefault();
+    const index=Number(handle.dataset.curveHandle);
+    const points=parseCubicCurve(state.motion.timing.easing);
+    if(!points)return;
+    const step=event.shiftKey?0.05:0.01;
+    const dx=event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0;
+    const dy=event.key==='ArrowDown'?-step:event.key==='ArrowUp'?step:0;
+    const updated=moveCurveHandle(points,index,points[index*2]+dx,points[index*2+1]+dy);
+    const easing=toCubicCurveString(updated);
+    if(easing!==state.motion.timing.easing) {
+      if(updateMotion(updateTiming(state.motion,'easing',easing)))
+        byId('curveGraph')?.querySelector('[data-curve-handle="'+index+'"]')?.focus({preventScroll:true});
+    }
+    return;
+  }
+  const marker=event.target?.closest?.('.keyframe-marker');
+  if(marker && ['ArrowLeft','ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    const step=(event.altKey?0.001:0.01)*(event.key==='ArrowLeft'?-1:1);
+    const result=shiftKeyframes(state.motion,state.selectedFrames,step);
+    const targetOriginal=Number(marker.dataset.frameIndex);
+    const nextIndex=result.originalIndexes.indexOf(targetOriginal);
+    if(JSON.stringify(result.motion.keyframes)!==JSON.stringify(state.motion.keyframes)) {
+      if(updateMotion(result.motion,{index:nextIndex,selection:result.selection})) {
+        seek(state.motion.keyframes[nextIndex].offset*duration());
+        document.querySelector('.keyframe-marker[data-frame-index="'+nextIndex+'"]')?.focus({preventScroll:true});
+      }
+    }
+    return;
+  }
+  if(editable)return;
   if(event.ctrlKey||event.metaKey){
     if(event.key.toLowerCase()==='z'){event.preventDefault();history(event.shiftKey?'redo':'undo')}
     else if(event.key.toLowerCase()==='y'){event.preventDefault();history('redo')}
