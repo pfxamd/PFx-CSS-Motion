@@ -278,6 +278,69 @@ const control = (label,field,value,opts={}) => `
   <label class="field"><span class="field-heading">${escapeHtml(label)}${opts.suffix?`<small>${opts.suffix}</small>`:''}</span>
   <input ${opts.number?'type="number"':'type="text"'} data-timing="${field}" value="${escapeHtml(value)}" ${opts.number?'step="'+(opts.step??1)+'"':''} ${opts.min!==undefined?'min="'+opts.min+'"':''} ${opts.max!==undefined?'max="'+opts.max+'"':''} spellcheck="false"></label>`;
 
+const CURVE_PLOT={width:300,height:280,left:40,right:260,zero:210,scale:130};
+function curvePoint(x,y) {
+  return {x: CURVE_PLOT.left+(CURVE_PLOT.right-CURVE_PLOT.left)*x,
+    y: CURVE_PLOT.zero-CURVE_PLOT.scale*y};
+}
+function curveDrawing(points) {
+  const a=curvePoint(points[0],points[1]);
+  const b=curvePoint(points[2],points[3]);
+  const start=curvePoint(0,0),end=curvePoint(1,1);
+  return {
+    a,b,start,end,
+    path:'M '+start.x+' '+start.y+' C '+a.x+' '+a.y+', '+b.x+' '+b.y+', '+end.x+' '+end.y
+  };
+}
+function renderCurveEditor(easing) {
+  const parsed=parseCubicCurve(easing);
+  if(!parsed) {
+    return '<div class="curve-editor"><div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Curve editor</span></div>'+
+    '<p class="curve-hint">Step easing cannot be edited with Bézier handles.</p>'+
+    '<button type="button" class="button button-muted" id="convertCurve">Use cubic Bézier</button></div>';
+  }
+  const curve=curveDrawing(parsed);
+  return `<div class="curve-editor">
+    <div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Drag the handles</span></div>
+    <svg id="curveGraph" viewBox="0 0 300 280" aria-label="Interactive Bézier easing graph" role="img">
+      <rect x="40" y="10" width="220" height="265" fill="transparent"/>
+      <path d="M 40 210 H 260 M 40 80 H 260 M 40 10 V 275 M 260 10 V 275" class="curve-gridline"/>
+      <path d="M 40 210 L 260 80" class="curve-diagonal"/>
+      <line id="curveLine0" x1="40" y1="210" x2="${curve.a.x}" y2="${curve.a.y}" class="curve-tangent"/>
+      <line id="curveLine1" x1="${curve.b.x}" y1="${curve.b.y}" x2="260" y2="80" class="curve-tangent"/>
+      <path id="curvePath" d="${curve.path}" class="curve-path"/>
+      <circle cx="40" cy="210" r="4" class="curve-anchor"/>
+      <circle cx="260" cy="80" r="4" class="curve-anchor"/>
+      <circle data-curve-handle="0" cx="${curve.a.x}" cy="${curve.a.y}" r="11" class="curve-handle"
+        role="slider" tabindex="0" aria-label="First Bézier control point" aria-valuetext="${parsed[0]}, ${parsed[1]}"/>
+      <circle data-curve-handle="1" cx="${curve.b.x}" cy="${curve.b.y}" r="11" class="curve-handle"
+        role="slider" tabindex="0" aria-label="Second Bézier control point" aria-valuetext="${parsed[2]}, ${parsed[3]}"/>
+    </svg>
+    <div class="curve-values" id="curveValues">
+      <span>P1 <strong>${parsed[0].toFixed(2)}, ${parsed[1].toFixed(2)}</strong></span>
+      <span>P2 <strong>${parsed[2].toFixed(2)}, ${parsed[3].toFixed(2)}</strong></span>
+    </div><p class="curve-hint">Shift the handles to reshape acceleration. Arrow keys adjust the focused handle.</p>
+  </div>`;
+}
+function paintCurve(points) {
+  const svg=byId('curveGraph');
+  if(!svg) return;
+  const {a,b,path}=curveDrawing(points);
+  svg.querySelector('#curvePath').setAttribute('d',path);
+  svg.querySelector('#curveLine0').setAttribute('x2',String(a.x));
+  svg.querySelector('#curveLine0').setAttribute('y2',String(a.y));
+  svg.querySelector('#curveLine1').setAttribute('x1',String(b.x));
+  svg.querySelector('#curveLine1').setAttribute('y1',String(b.y));
+  for (const [i,point] of [[0,a],[1,b]]) {
+    const node=svg.querySelector('[data-curve-handle="'+i+'"]');
+    node.setAttribute('cx',String(point.x));
+    node.setAttribute('cy',String(point.y));
+    node.setAttribute('aria-valuetext',points[i*2]+', '+points[i*2+1]);
+  }
+  byId('curveValues').innerHTML='<span>P1 <strong>'+points[0].toFixed(2)+', '+points[1].toFixed(2)+'</strong></span>'+
+   '<span>P2 <strong>'+points[2].toFixed(2)+', '+points[3].toFixed(2)+'</strong></span>';
+}
+
 function renderInspector() {
   document.querySelectorAll('[data-panel]').forEach(button=>{
     const selected=button.dataset.panel===state.panel;
@@ -303,6 +366,7 @@ function renderInspector() {
         ],t.easing)}${!['linear','ease','ease-in','ease-out','ease-in-out','cubic-bezier(0.22, 1, 0.36, 1)','cubic-bezier(0.34, 1.56, 0.64, 1)','cubic-bezier(0.16, 1, 0.3, 1)','steps(4, end)'].includes(t.easing)?`<option value="${escapeHtml(t.easing)}" selected>Custom · ${escapeHtml(t.easing)}</option>`:''}</select>
         </label>
         ${control('Custom easing','easing',t.easing,{suffix:'CSS'})}
+        ${renderCurveEditor(t.easing)}
       </div>
       <div class="inspector-section"><div class="section-title"><span>02</span><strong>Playback</strong></div>
         <label class="field"><span class="field-heading">Iterations <small>repeat count</small></span><input data-timing="iterations" type="number" min="0" max="1000" step="0.5" value="${t.iterations}"></label>
