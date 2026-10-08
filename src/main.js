@@ -697,6 +697,41 @@ byId('fileInput').addEventListener('change',async event=>{
 });
 document.addEventListener('keydown',event=>{
   const tag=event.target?.tagName;
+  const editable=['INPUT','TEXTAREA','SELECT'].includes(tag) ||
+    event.target?.isContentEditable;
+  const handle=event.target?.closest?.('[data-curve-handle]');
+  if(handle && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) {
+    event.preventDefault();
+    const index=Number(handle.dataset.curveHandle);
+    const points=parseCubicCurve(state.motion.timing.easing);
+    if(!points)return;
+    const step=event.shiftKey?0.05:0.01;
+    const dx=event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0;
+    const dy=event.key==='ArrowDown'?-step:event.key==='ArrowUp'?step:0;
+    const updated=moveCurveHandle(points,index,points[index*2]+dx,points[index*2+1]+dy);
+    const easing=toCubicCurveString(updated);
+    if(easing!==state.motion.timing.easing) {
+      if(updateMotion(updateTiming(state.motion,'easing',easing)))
+        byId('curveGraph')?.querySelector('[data-curve-handle="'+index+'"]')?.focus({preventScroll:true});
+    }
+    return;
+  }
+  const marker=event.target?.closest?.('.keyframe-marker');
+  if(marker && ['ArrowLeft','ArrowRight'].includes(event.key)) {
+    event.preventDefault();
+    const step=(event.altKey?0.001:0.01)*(event.key==='ArrowLeft'?-1:1);
+    const result=shiftKeyframes(state.motion,state.selectedFrames,step);
+    const targetOriginal=Number(marker.dataset.frameIndex);
+    const nextIndex=result.originalIndexes.indexOf(targetOriginal);
+    if(JSON.stringify(result.motion.keyframes)!==JSON.stringify(state.motion.keyframes)) {
+      if(updateMotion(result.motion,{index:nextIndex,selection:result.selection})) {
+        seek(state.motion.keyframes[nextIndex].offset*duration());
+        document.querySelector('.keyframe-marker[data-frame-index="'+nextIndex+'"]')?.focus({preventScroll:true});
+      }
+    }
+    return;
+  }
+  if(editable)return;
   if(event.ctrlKey||event.metaKey){
     if(event.key.toLowerCase()==='z'){event.preventDefault();history(event.shiftKey?'redo':'undo')}
     else if(event.key.toLowerCase()==='y'){event.preventDefault();history('redo')}
