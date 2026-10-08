@@ -170,6 +170,7 @@ function tick() {
     updateTimeUI();
   }
   if(animation.playState==='finished' && !state.looping) {
+    state.time=duration();
     state.playing=false;
     updateTimeUI();
     return;
@@ -278,7 +279,7 @@ const control = (label,field,value,opts={}) => `
   <label class="field"><span class="field-heading">${escapeHtml(label)}${opts.suffix?`<small>${opts.suffix}</small>`:''}</span>
   <input ${opts.number?'type="number"':'type="text"'} data-timing="${field}" value="${escapeHtml(value)}" ${opts.number?'step="'+(opts.step??1)+'"':''} ${opts.min!==undefined?'min="'+opts.min+'"':''} ${opts.max!==undefined?'max="'+opts.max+'"':''} spellcheck="false"></label>`;
 
-const CURVE_PLOT={width:300,height:280,left:40,right:260,zero:210,scale:130};
+const CURVE_PLOT={width:300,height:280,left:40,right:260,zero:210,scale:105};
 function curvePoint(x,y) {
   return {x: CURVE_PLOT.left+(CURVE_PLOT.right-CURVE_PLOT.left)*x,
     y: CURVE_PLOT.zero-CURVE_PLOT.scale*y};
@@ -304,13 +305,13 @@ function renderCurveEditor(easing) {
     <div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Drag the handles</span></div>
     <svg id="curveGraph" viewBox="0 0 300 280" aria-label="Interactive Bézier easing graph" role="img">
       <rect x="40" y="10" width="220" height="265" fill="transparent"/>
-      <path d="M 40 210 H 260 M 40 80 H 260 M 40 10 V 275 M 260 10 V 275" class="curve-gridline"/>
-      <path d="M 40 210 L 260 80" class="curve-diagonal"/>
+      <path d="M 40 210 H 260 M 40 105 H 260 M 40 10 V 275 M 260 10 V 275" class="curve-gridline"/>
+      <path d="M 40 210 L 260 105" class="curve-diagonal"/>
       <line id="curveLine0" x1="40" y1="210" x2="${curve.a.x}" y2="${curve.a.y}" class="curve-tangent"/>
-      <line id="curveLine1" x1="${curve.b.x}" y1="${curve.b.y}" x2="260" y2="80" class="curve-tangent"/>
+      <line id="curveLine1" x1="${curve.b.x}" y1="${curve.b.y}" x2="260" y2="105" class="curve-tangent"/>
       <path id="curvePath" d="${curve.path}" class="curve-path"/>
       <circle cx="40" cy="210" r="4" class="curve-anchor"/>
-      <circle cx="260" cy="80" r="4" class="curve-anchor"/>
+      <circle cx="260" cy="105" r="4" class="curve-anchor"/>
       <circle data-curve-handle="0" cx="${curve.a.x}" cy="${curve.a.y}" r="11" class="curve-handle"
         role="slider" tabindex="0" aria-label="First Bézier control point" aria-valuetext="${parsed[0]}, ${parsed[1]}"/>
       <circle data-curve-handle="1" cx="${curve.b.x}" cy="${curve.b.y}" r="11" class="curve-handle"
@@ -528,6 +529,7 @@ function beginPointerSession(event) {
   const bounds=track.getBoundingClientRect();
   selectFrame(index,{additive:event.ctrlKey||event.metaKey,range:event.shiftKey,
     preserve:!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&state.selectedFrames.includes(index)});
+  if(!state.selectedFrames.includes(index))return;
   pointerSession={
     kind:'frame',pointerId:event.pointerId,originalMotion:copyMotion(state.motion),
     originalTime:state.time,originalPreset:state.preset,
