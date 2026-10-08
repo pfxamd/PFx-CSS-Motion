@@ -353,3 +353,35 @@ background-size:28px 28px;border-radius:6px;color:#3e3840;isolation:isolate;}
   .stage-tools .muted-tool {display:none;}
   .timeline-bottom {font-size:10px;}
 }
+
+/* Timeline editor — Alpha 0.2 interaction surfaces */
+.track-title-row {gap:12px;}
+.track-title {white-space:nowrap}
+.selected-count {font:700 10px 'Manrope',sans-serif;color:#d4c0bb;background:#362e32;border:1px solid #554146;padding:4px 7px;border-radius:5px;margin-left:auto;white-space:nowrap;}
+.track-title-row .text-action {white-space:nowrap;font-size:10px;}
+.keyframe-marker {touch-action:none;cursor:ew-resize;user-select:none;-webkit-user-select:none;}
+.keyframe-marker.marker-selected span {background:#ff816a;border-color:#ffcfb8;box-shadow:0 0 0 4px rgba(255,132,108,.15);}
+.curve-editor {margin-top:18px;padding:13px;border:1px solid #45404a;border-radius:9px;background:#202129;}
+.curve-editor-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.curve-editor-heading strong {font:800 10px 'Manrope',sans-serif;color:#eab39f;letter-spacing:.9px;}
+.curve-editor-heading span {font-size:10px;color:#aba8b7;}
+#curveGraph {width:100%;height:auto;max-height:240px;display:block;background:#171920;border:1px solid #36353f;border-radius:7px;touch-action:none;}
+.curve-gridline {stroke:#393943;stroke-width:1;stroke-dasharray:3 7;fill:none;}
+.curve-diagonal {stroke:#4e4951;stroke-width:1;stroke-dasharray:5 6;fill:none;}
+.curve-tangent {stroke:#b18b85;stroke-width:1.8;stroke-dasharray:4 4;}
+.curve-path {stroke:#ff997e;stroke-width:3.5;stroke-linecap:round;fill:none;}
+.curve-anchor {fill:#e4bbae;}
+.curve-handle {fill:#ffe7d9;stroke:#d76c59;stroke-width:3.5;cursor:grab;touch-action:none;outline:none;}
+.curve-handle:hover,.curve-handle:focus-visible {fill:#fff;stroke:#ff947f;stroke-width:5;}
+.curve-handle:active {cursor:grabbing;}
+.curve-values {display:flex;justify-content:space-between;gap:8px;padding-top:12px;font-size:10px;color:#a5a1b2;}
+.curve-values strong {color:#f1dee0;font:700 10px 'Manrope',sans-serif;margin-left:3px;font-variant-numeric:tabular-nums;}
+.curve-hint {font-size:10px;line-height:1.55;color:#aaa5b2;margin:12px 0 0;}
+.curve-editor #convertCurve {margin-top:11px;}
+@media (max-width:690px) {
+  .selected-count {font-size:9px;padding:3px 5px;}
+  .track-title-row {gap:6px;}
+  .track-title-row .text-action {font-size:9px;}
+  .timeline-bottom span:first-child {max-width:85%;font-size:9px;line-height:1.4;}
+  .curve-editor {max-width:430px;}
+}
