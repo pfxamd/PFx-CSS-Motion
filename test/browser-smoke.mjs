@@ -179,6 +179,13 @@ try {
     [...new Set(elements.map(el=>Math.round(parseFloat(el.style.left))))].sort((a,b)=>a-b));
   assert.deepEqual(revertedOffsets,[0,25,50,100]);
 
+  const keyboardMarker=page.locator('.keyframe-marker[data-frame-index="1"]').first();
+  await keyboardMarker.focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(Math.round(await page.locator('.keyframe-marker[data-frame-index="1"]').first().evaluate(el=>parseFloat(el.style.left))),26);
+  await page.locator('#undoButton').click();
+  assert.equal(Math.round(await page.locator('.keyframe-marker[data-frame-index="1"]').first().evaluate(el=>parseFloat(el.style.left))),25);
+
   // Interactive easing editor actually modifies core timing and the native effect.
   await page.locator('[data-panel="motion"]').click();
   const curveHandle=page.locator('[data-curve-handle="0"]');
