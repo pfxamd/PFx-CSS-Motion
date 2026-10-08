@@ -14,7 +14,7 @@ export function shiftKeyframes(motion, indexes, delta) {
     throw new RangeError('Invalid selected keyframe');
   }
   const offsets = selected.map(index => motion.keyframes[index].offset);
-  const movement = clamp(delta, -Math.min(...offsets), 1 - Math.max(...offsets));
+  const movement = round(clamp(delta, -Math.min(...offsets), 1 - Math.max(...offsets)));
   const lookup = new Set(selected);
   const entries = motion.keyframes.map((frame, original) => ({
     frame: {...frame, offset: lookup.has(original) ? round(clamp(frame.offset + movement, 0, 1)) : frame.offset},
