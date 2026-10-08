@@ -1,4 +1,8 @@
 import './style.css';
+import {
+  shiftKeyframes, insertSampledFrame, parseCubicCurve,
+  toCubicCurveString, moveCurveHandle
+} from './timeline-editor.js';
 import { createBrowserAnimation, compileCSS, parseEasing } from '@pfxamd/css-motion-core';
 import {
   PRESETS, makePreset, copyMotion, allProperties, updateTiming, updateFrame,
@@ -17,6 +21,7 @@ const state = {
   object: 'card',
   panel: 'motion',
   selectedFrame: 1,
+  selectedFrames: [1],
   time: 600,
   looping: false,
   undo: [],
@@ -49,6 +54,14 @@ const previewMotion=()=>state.looping
   ? {...state.motion,timing:{...state.motion.timing,iterations:Infinity}}
   : state.motion;
 const clampedTime=value=>Math.min(duration(),Math.max(0,Number(value)||0));
+const animationTime=value=>value+state.motion.timing.delay;
+const cycleTime=value=>{
+  const delta=value-state.motion.timing.delay;
+  if(state.looping || state.motion.timing.iterations>1) {
+    return ((delta%duration())+duration())%duration();
+  }
+  return clampedTime(delta);
+};
 
 function cancelFrame() {
   if(frameRequest)cancelAnimationFrame(frameRequest);
@@ -119,7 +132,7 @@ function initAnimation() {
   if(controller) {controller.dispose();controller=null;}
   controller=createBrowserAnimation(byId('previewTarget'),previewMotion());
   controller.setRate(state.playbackSpeed);
-  controller.seek(clampedTime(state.time));
+  controller.seek(animationTime(clampedTime(state.time)));
   updateTimeUI();
 }
 function renderAll({subject=false}={}) {
@@ -153,7 +166,7 @@ function tick() {
   const animation=controller.animation;
   const current=Number(animation.currentTime??0);
   if(Number.isFinite(current)) {
-    state.time=state.looping ? ((current%duration())+duration())%duration() : clampedTime(current);
+    state.time=cycleTime(current);
     updateTimeUI();
   }
   if(animation.playState==='finished' && !state.looping) {
@@ -172,7 +185,7 @@ function togglePlay() {
     cancelFrame();
   } else {
     if(!state.looping && clampedTime(state.time)>=duration()) {
-      state.time=0;controller.seek(0);
+      state.time=0;controller.seek(animationTime(0));
     }
     controller.play();
     state.playing=true;
@@ -190,7 +203,7 @@ function seek(time, {pause=true}={}) {
     cancelFrame();
   }
   state.time=clampedTime(time);
-  controller.seek(state.time);
+  controller.seek(animationTime(state.time));
   updateTimeUI();
 }
 function setLoop(enabled) {
@@ -203,20 +216,22 @@ function setLoop(enabled) {
   const motion={...base,timing:{...base.timing,iterations:enabled?Infinity:base.timing.iterations}};
   controller=createBrowserAnimation(byId('previewTarget'),motion);
   controller.setRate(state.playbackSpeed);
-  controller.seek(at);
+  controller.seek(animationTime(at));
   state.playing=false;
   if(wasPlaying)togglePlay();
   updateTimeUI();
 }
 
-function updateMotion(next,{index=state.selectedFrame,preset=null}={}) {
+function updateMotion(next,{index=state.selectedFrame,preset=null,selection=null}={}) {
   const previous=copyMotion(state.motion);
   const oldTime=state.time;
   const oldPreset=state.preset;
+  const oldSelected=[...state.selectedFrames];
   try {
     compiledMotion(next);
     state.motion=next;
     state.selectedFrame=Math.max(0,Math.min(next.keyframes.length-1,index));
+    state.selectedFrames=selection?.length ? [...selection] : [state.selectedFrame];
     state.time=clampedTime(oldTime);
     state.preset=preset;
     renderAll();
@@ -226,7 +241,7 @@ function updateMotion(next,{index=state.selectedFrame,preset=null}={}) {
     updateHistoryButtons();
     return true;
   } catch(error) {
-    state.motion=previous;state.preset=oldPreset;state.time=oldTime;
+    state.motion=previous;state.preset=oldPreset;state.time=oldTime;state.selectedFrames=oldSelected;
     try{renderAll();}catch{}
     toast(error.message,true);
     return false;
@@ -250,6 +265,7 @@ function history(direction) {
   state.time=snapshot.time;
   state.preset=snapshot.preset;
   state.selectedFrame=Math.min(state.selectedFrame,state.motion.keyframes.length-1);
+  state.selectedFrames=[state.selectedFrame];
   state.looping=false;
   renderAll();
   toast(direction==='undo'?'Change undone':'Change restored');
