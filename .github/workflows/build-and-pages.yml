@@ -25,6 +25,9 @@ jobs:
           test -s dist/index.html
           test -n "$(find dist/assets -maxdepth 1 -name '*.js' -print -quit)"
           ! grep -R 'src/main.js' dist/index.html
+          test -s dist/brand/logo.svg
+          cmp public/brand/logo.svg dist/brand/logo.svg
+          grep -q 'brand/logo.svg' dist/index.html
       - uses: actions/upload-artifact@v4
         with:
           name: pfx-css-motion-dist
