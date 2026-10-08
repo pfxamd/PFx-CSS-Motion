@@ -118,6 +118,7 @@ try {
     'Mobile horizontal overflow: '+JSON.stringify(mobile));
   assert(mobile.canvasWidth>250);
   assert(mobile.inspectorWidth>280);
+  assert.equal(await page.locator('#playbackSpeed').isVisible(),true);
   assert(await page.locator('#exportButton').isVisible());
   assert.deepEqual(errors,[]);
   console.log('PFx_STUDIO_BROWSER_PASS',JSON.stringify({engine:engineName,checks:26,errors,coreNativeAnimation:true,download:artifact.suggestedFilename()}));
