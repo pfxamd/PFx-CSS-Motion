@@ -28,10 +28,11 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:2px soli
 body {margin:0;min-width:320px;overflow:hidden;}
 .app-shell {height:100dvh;min-height:680px;display:grid;grid-template-rows:70px minmax(0,1fr) 31px;background:var(--bg);}
 .topbar {display:flex;align-items:center;gap:0;padding:0 22px 0 25px;border-bottom:1px solid var(--border);background:#14151b;min-width:0;}
-.brand {display:flex;align-items:center;min-width:258px;gap:12px;white-space:nowrap;}
+ .brand {display:flex;align-items:center;min-width:292px;gap:11px;white-space:nowrap;flex-shrink:0;}
 .brand-logo {display:block;width:40px;height:34px;max-width:44px;object-fit:contain;flex:none;}
-.brand-name {font:800 15px 'Manrope',sans-serif;letter-spacing:-.55px}
-.edition {padding:5px 7px;background:#4a302e;border:1px solid #784540;border-radius:4px;color:#ffaf9b;font:700 9px 'Manrope',sans-serif;letter-spacing:.65px}
+.brand-name {font:800 15px 'Manrope',sans-serif;letter-spacing:-.55px;color:#f7f4f6;}
+.edition {display:inline-flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0;padding:7px 10px;background:#dafa70;border:1px solid #efffa7;border-radius:6px;color:#192011;font:900 10px/1 'Manrope',sans-serif;letter-spacing:.75px;box-shadow:0 0 0 1px rgba(218,250,112,.14),0 3px 12px rgba(218,250,112,.13)}
+.edition::before {content:'';display:block;width:6px;height:6px;border-radius:50%;background:#284318;box-shadow:0 0 0 2px rgba(40,67,24,.12)}
 .topbar-center {min-width:140px;display:flex;align-items:center;gap:15px;color:#9e9cab;}
 .topbar-divider {height:27px;width:1px;background:#33343d}
 .workspace-label {font-size:12px;color:#92929f}
@@ -223,7 +224,7 @@ background-size:28px 28px;border-radius:6px;color:#3e3840;isolation:isolate;}
 
 @media (max-width:1380px) {
   .workspace {grid-template-columns:207px minmax(350px,1fr) 285px;}
-  .brand {min-width:225px}
+  .brand {min-width:292px}
   .library-panel {padding-left:11px;padding-right:11px}
   .panel-intro {padding-left:7px}
   .inspector-top {padding-left:18px}
@@ -234,7 +235,7 @@ background-size:28px 28px;border-radius:6px;color:#3e3840;isolation:isolate;}
 }
 @media (max-width:1150px) {
   .workspace {grid-template-columns:171px minmax(315px,1fr) 264px}
-  .brand {min-width:204px}
+  .brand {min-width:282px}
   .engine-indicator,.hide-compact,.small-description {display:none}
   .topbar-center {gap:9px}
   .topbar {padding:0 12px}
@@ -269,7 +270,7 @@ background-size:28px 28px;border-radius:6px;color:#3e3840;isolation:isolate;}
   .topbar-actions {width:auto;margin-left:auto;gap:5px}
   .topbar-actions .button {padding:0 9px;height:31px}
   .brand-name {font-size:13px}
-  .edition {font-size:8px}
+  .edition {font-size:9px;padding:6px 8px;gap:5px}
   .workspace {display:flex;flex-direction:column}
   .library-panel {display:flex;flex-direction:column;align-items:stretch;gap:10px}
   .panel-intro h2 {font-size:14px;margin:7px 0 0}
