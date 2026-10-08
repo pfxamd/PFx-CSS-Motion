@@ -409,21 +409,34 @@ function renderInspector() {
 function renderTimeline() {
   const motion=state.motion;
   byId('frameCount').textContent=motion.keyframes.length+' frames';
+  byId('selectedCount').textContent=state.selectedFrames.length+' selected';
   byId('rulerMarks').innerHTML=Array.from({length:6},(_,index)=>`<span>${(duration()/1000*index/5).toFixed(2)}</span>`).join('');
   const properties=allProperties(motion);
   byId('propertyTracks').innerHTML=properties.map((name,row)=>`
     <div class="property-track"><div class="track-label"><span class="track-label-icon">${['◇','≈','✳','◌'][row%4]}</span><span title="${escapeHtml(name)}">${escapeHtml(name)}</span></div>
     <div class="keyframe-track" style="--playhead:${clampedTime(state.time)/duration()*100}%">
-      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrame===index?'marker-selected':''}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
+      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrames.includes(index)?'marker-selected':''}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
     </div></div>`).join('');
   if(!properties.length)byId('propertyTracks').innerHTML='<p class="no-properties">Select a keyframe and add a property.</p>';
   updateTimeUI();
 }
-function selectFrame(index) {
-  state.selectedFrame=Math.max(0,Math.min(state.motion.keyframes.length-1,index));
+function selectFrame(index,{additive=false,range=false}={}) {
+  const max=state.motion.keyframes.length-1;
+  index=Math.max(0,Math.min(max,index));
+  if(range) {
+    const from=Math.min(state.selectedFrame,index),to=Math.max(state.selectedFrame,index);
+    state.selectedFrames=Array.from({length:to-from+1},(_,i)=>from+i);
+  } else if(additive) {
+    const set=new Set(state.selectedFrames);
+    if(set.has(index) && set.size>1)set.delete(index);
+    else set.add(index);
+    state.selectedFrames=[...set].sort((a,b)=>a-b);
+  } else {
+    state.selectedFrames=[index];
+  }
+  state.selectedFrame=index;
   state.panel='keyframe';
-  state.time=state.motion.keyframes[state.selectedFrame].offset*duration();
-  seek(state.time);
+  seek(state.motion.keyframes[index].offset*duration());
   renderTimeline();
   renderInspector();
 }
