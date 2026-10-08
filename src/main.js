@@ -21,7 +21,8 @@ const state = {
   looping: false,
   undo: [],
   redo: [],
-  playing: false
+  playing: false,
+  playbackSpeed: 1
 };
 let controller=null;
 let frameRequest=0;
@@ -54,6 +55,27 @@ function cancelFrame() {
   frameRequest=0;
 }
 function compiled() { return compileCSS(state.motion); }
+
+function updateHistoryButtons() {
+  byId('undoButton').disabled = state.undo.length === 0;
+  byId('redoButton').disabled = state.redo.length === 0;
+}
+
+function updateStageDimensions() {
+  const rect = byId('canvas').getBoundingClientRect();
+  const label = Math.round(rect.width) + ' × ' + Math.round(rect.height) + ' px';
+  byId('canvasDimensions').textContent = label;
+  byId('canvasMeta').textContent = 'CANVAS / ' + label;
+}
+
+function setPlaybackSpeed(value) {
+  const speed = Number(value);
+  if (![0.25, 0.5, 0.75, 1, 1.5, 2].includes(speed))
+    throw new RangeError('Unsupported playback speed');
+  state.playbackSpeed = speed;
+  controller?.setRate(speed);
+  byId('playbackSpeed').value = String(speed);
+}
 
 function renderPresetLibrary() {
   byId('presetList').innerHTML=PRESETS.map((preset,index)=>`
