@@ -1,0 +1,28 @@
+name: Live browser editor tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  editor:
+    name: ${{ matrix.browser }} studio interaction
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: node test/browser-smoke.mjs ${{ matrix.browser }}
