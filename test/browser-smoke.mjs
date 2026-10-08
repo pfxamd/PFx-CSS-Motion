@@ -67,6 +67,12 @@ try {
   const field=page.locator('[data-timing="duration"]');
   await field.fill('1600');await field.press('Tab');
   assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  await page.locator('#undoButton').click();
+  assert.equal(await page.locator('#scrub').getAttribute('max'),'1000');
+  assert.equal(await page.locator('#redoButton').isEnabled(),true);
+  await page.locator('#redoButton').click();
+  assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   // Add and modify a real keyframe.
   await scrubTo(page,800);
   await page.locator('#addFrameButton').click();
