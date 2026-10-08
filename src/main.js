@@ -615,7 +615,10 @@ document.addEventListener('click',event=>{
   const panel=event.target.closest('[data-panel]');
   if(panel){state.panel=panel.dataset.panel;renderInspector();return}
   const marker=event.target.closest('[data-frame-index]');
-  if(marker){selectFrame(Number(marker.dataset.frameIndex));return}
+  if(marker){
+    if(event.detail===0)selectFrame(Number(marker.dataset.frameIndex));
+    return;
+  }
   const deletion=event.target.closest('[data-delete-property]');
   if(deletion){
     const property=deletion.dataset.deleteProperty;
@@ -629,11 +632,10 @@ document.addEventListener('click',event=>{
     case 'toStart':seek(0);break;
     case 'toEnd':seek(duration());break;
     case 'repeatButton':setLoop(!state.looping);break;
-    case 'addFrameButton':{
-      const result=insertFrame(state.motion,clampedTime(state.time)/duration());
-      if(updateMotion(result.motion,{index:result.index}))state.panel='keyframe',renderInspector();
+    case 'addFrameButton':sampleKeyframe();break;
+    case 'convertCurve':
+      updateMotion(updateTiming(state.motion,'easing','cubic-bezier(0.25, 0.1, 0.25, 1)'));
       break;
-    }
     case 'removeFrameButton':
       if(updateMotion(deleteFrame(state.motion,state.selectedFrame),{index:Math.max(0,state.selectedFrame-1)}))toast('Keyframe removed');
       break;
