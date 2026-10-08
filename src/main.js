@@ -44,6 +44,9 @@ function download(name,text,type) {
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 const duration=()=>state.motion.timing.duration;
+const previewMotion=()=>state.looping
+  ? {...state.motion,timing:{...state.motion.timing,iterations:Infinity}}
+  : state.motion;
 const clampedTime=value=>Math.min(duration(),Math.max(0,Number(value)||0));
 
 function cancelFrame() {
@@ -92,7 +95,7 @@ function initAnimation() {
   cancelFrame();
   state.playing=false;
   if(controller) {controller.dispose();controller=null;}
-  controller=createBrowserAnimation(byId('previewTarget'),state.motion);
+  controller=createBrowserAnimation(byId('previewTarget'),previewMotion());
   controller.seek(clampedTime(state.time));
   updateTimeUI();
 }
