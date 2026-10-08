@@ -59,6 +59,8 @@ try {
   assert.equal(Number(opacity),0);
   await page.locator('[data-preset="elastic"]').click();
   assert.equal(await page.locator('#motionName').inputValue(),'Soft overshoot');
+  assert.equal(await page.locator('#undoButton').isEnabled(),true);
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   await page.locator('[data-object="shape"]').click();
   assert.equal(await page.locator('.preview-shape').count(),1);
   await page.locator('[data-panel="motion"]').click();
