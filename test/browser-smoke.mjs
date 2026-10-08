@@ -13,6 +13,12 @@ let output='';
 server.stdout.on('data',chunk=>output+=chunk);
 server.stderr.on('data',chunk=>output+=chunk);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function scrubTo(page,value) {
+  await page.locator('#scrub').evaluate((element,next)=>{
+    element.value=String(next);
+    element.dispatchEvent(new Event('input',{bubbles:true}));
+  },value);
+}
 let browser;
 try {
   let started=false;
@@ -41,10 +47,10 @@ try {
   });
   assert.equal(native.count,1);
   assert.equal(native.playState,'paused');
-  await page.locator('#scrub').fill('1200');
+  await scrubTo(page,1200);
   let opacity=await page.locator('#previewTarget').evaluate(el=>getComputedStyle(el).opacity);
   assert.equal(Number(opacity),1);
-  await page.locator('#scrub').fill('0');
+  await scrubTo(page,0);
   opacity=await page.locator('#previewTarget').evaluate(el=>getComputedStyle(el).opacity);
   assert.equal(Number(opacity),0);
   await page.locator('[data-preset="elastic"]').click();
@@ -56,7 +62,7 @@ try {
   await field.fill('1600');await field.press('Tab');
   assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
   // Add and modify a real keyframe.
-  await page.locator('#scrub').fill('800');
+  await scrubTo(page,800);
   await page.locator('#addFrameButton').click();
   assert.match(await page.locator('#frameCount').textContent(),/3 frames/);
   assert.equal(await page.locator('#keyframePosition').inputValue(),'50');
