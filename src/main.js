@@ -453,6 +453,155 @@ async function copyCSS() {
   try{await navigator.clipboard.writeText(compiled().css);toast('CSS copied to clipboard')}catch{toast('Clipboard unavailable. Use Download .css instead.',true)}
 }
 
+function sampleKeyframe() {
+  try {
+    if(state.playing)seek(state.time);
+    const offset=state.time/duration();
+    const computed=getComputedStyle(byId('previewTarget'));
+    const sampled={};
+    for(const property of allProperties(state.motion)) {
+      const cssProperty=property.startsWith('--')?property:
+        property.replace(/[A-Z]/g,character=>'-'+character.toLowerCase());
+      sampled[property]=computed.getPropertyValue(cssProperty).trim();
+    }
+    const result=insertSampledFrame(state.motion,offset,sampled);
+    if(updateMotion(result.motion,{index:result.index})) {
+      state.panel='keyframe';
+      renderInspector();
+      toast('Keyframe sampled from live preview');
+    }
+  }catch(error){toast(error.message,true);}
+}
+
+let pointerSession=null;
+function cancelPendingPointer() {
+  if(pointerSession?.raf)cancelAnimationFrame(pointerSession.raf);
+  if(pointerSession)pointerSession.raf=0;
+}
+function frameMove(session,delta) {
+  const result=shiftKeyframes(session.originalMotion,session.selected,delta);
+  const primaryIndex=result.originalIndexes.indexOf(session.primary);
+  state.motion=result.motion;
+  state.selectedFrames=result.selection;
+  state.selectedFrame=primaryIndex;
+  state.time=state.motion.keyframes[primaryIndex].offset*duration();
+  renderTimeline();
+  renderInspector();
+  initAnimation();
+  return result.delta;
+}
+function curveMove(session,clientX,clientY) {
+  const bounds=session.bounds;
+  const x=(clientX-bounds.left)/bounds.width*CURVE_PLOT.width;
+  const y=(clientY-bounds.top)/bounds.height*CURVE_PLOT.height;
+  const values=moveCurveHandle(session.values,session.handle,
+    (x-CURVE_PLOT.left)/(CURVE_PLOT.right-CURVE_PLOT.left),
+    (CURVE_PLOT.zero-y)/CURVE_PLOT.scale);
+  session.current=values;
+  paintCurve(values);
+  controller?.animation.effect.updateTiming({easing:toCubicCurveString(values)});
+}
+function beginPointerSession(event) {
+  if(event.button!==0 || pointerSession)return;
+  const curve=event.target.closest('[data-curve-handle]');
+  if(curve) {
+    const values=parseCubicCurve(state.motion.timing.easing);
+    if(!values)return;
+    event.preventDefault();
+    const svg=byId('curveGraph');
+    pointerSession={
+      kind:'curve',pointerId:event.pointerId,
+      values,current:values,handle:Number(curve.dataset.curveHandle),
+      bounds:svg.getBoundingClientRect(),moved:false,
+      originalTime:state.time
+    };
+    curve.focus({preventScroll:true});
+    return;
+  }
+  const marker=event.target.closest('.keyframe-marker');
+  if(!marker)return;
+  event.preventDefault();
+  const index=Number(marker.dataset.frameIndex);
+  const track=marker.closest('.keyframe-track');
+  const bounds=track.getBoundingClientRect();
+  selectFrame(index,{additive:event.ctrlKey||event.metaKey,range:event.shiftKey});
+  pointerSession={
+    kind:'frame',pointerId:event.pointerId,originalMotion:copyMotion(state.motion),
+    originalTime:state.time,originalPreset:state.preset,
+    selected:[...state.selectedFrames],primary:index,
+    initialX:event.clientX,pendingDelta:0,
+    width:bounds.width,moved:false,raf:0
+  };
+}
+function updatePointerSession(event) {
+  const session=pointerSession;
+  if(!session || event.pointerId!==session.pointerId)return;
+  if(session.kind==='curve') {
+    event.preventDefault();
+    session.moved=true;
+    try{curveMove(session,event.clientX,event.clientY)}catch(error){toast(error.message,true);}
+    return;
+  }
+  if(Math.abs(event.clientX-session.initialX)<3 && !session.moved)return;
+  session.moved=true;
+  event.preventDefault();
+  session.pendingDelta=(event.clientX-session.initialX)/Math.max(1,session.width);
+  if(session.raf)return;
+  session.raf=requestAnimationFrame(()=>{
+    session.raf=0;
+    if(pointerSession!==session)return;
+    frameMove(session,session.pendingDelta);
+  });
+}
+function completePointerSession(event,cancel=false) {
+  const session=pointerSession;
+  if(!session || event.pointerId!==session.pointerId)return;
+  pointerSession=null;
+  if(session.kind==='curve') {
+    if(cancel || !session.moved) {
+      controller?.animation.effect.updateTiming({easing:state.motion.timing.easing});
+      if(!cancel)return;
+    } else {
+      const next=toCubicCurveString(session.current);
+      if(next!==state.motion.timing.easing)updateMotion(updateTiming(state.motion,'easing',next));
+      return;
+    }
+    renderInspector();
+    return;
+  }
+  cancelPendingPointer();
+  if(session.raf)cancelAnimationFrame(session.raf);
+  const changed=session.moved &&
+    Math.abs(session.pendingDelta)>0.00001;
+  if(!changed && !cancel)return;
+  if(!cancel && changed)frameMove(session,session.pendingDelta);
+  const finalMotion=state.motion;
+  const finalSelection=[...state.selectedFrames];
+  const finalIndex=state.selectedFrame;
+  const finalTime=state.time;
+  state.motion=session.originalMotion;
+  state.time=session.originalTime;
+  state.preset=session.originalPreset;
+  if(cancel) {
+    state.selectedFrames=[...session.selected];
+    state.selectedFrame=session.primary;
+    renderAll();
+    return;
+  }
+  if(JSON.stringify(finalMotion.keyframes)===JSON.stringify(session.originalMotion.keyframes)) {
+    state.selectedFrames=finalSelection;
+    state.selectedFrame=finalIndex;
+    renderAll();
+    return;
+  }
+  if(updateMotion(finalMotion,{index:finalIndex,selection:finalSelection}))
+    seek(finalTime);
+}
+document.addEventListener('pointerdown',beginPointerSession);
+window.addEventListener('pointermove',updatePointerSession,{passive:false});
+window.addEventListener('pointerup',event=>completePointerSession(event));
+window.addEventListener('pointercancel',event=>completePointerSession(event,true));
+
 document.addEventListener('click',event=>{
   const preset=event.target.closest('[data-preset]');
   if(preset){const id=preset.dataset.preset;updateMotion(makePreset(id),{index:1,preset:id});seek(duration()/2);return}
