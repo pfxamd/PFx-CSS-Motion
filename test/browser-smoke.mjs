@@ -40,6 +40,10 @@ try {
   assert.equal(await page.locator('.preset-card').count(),4);
   assert.equal(await page.locator('.preview-card').count(),1);
   assert.equal(await page.locator('.keyframe-marker').count(),6);
+  assert.equal(await page.locator('#undoButton').isDisabled(),true);
+  assert.equal(await page.locator('#redoButton').isDisabled(),true);
+  await page.locator('#playbackSpeed').selectOption('1.5');
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   // Native Web Animations actually applies our model to the stage.
   const native=await page.evaluate(()=>{
     const element=document.getElementById('previewTarget');
