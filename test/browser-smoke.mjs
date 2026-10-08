@@ -153,7 +153,7 @@ try {
   await page.locator('#undoButton').click();
   assert.equal(await page.locator('.keyframe-marker[data-frame-index="1"]').first().evaluate(el=>Math.round(parseFloat(el.style.left))),25);
   await page.locator('#redoButton').click();
-  assert(Math.round(parseFloat(await page.locator('.keyframe-marker[data-frame-index="1"]').first().getAttribute('style').then(s=>s.match(/left:\\s*([\\d.]+)/)?.[1])))>=33);
+  assert(await page.locator('.keyframe-marker[data-frame-index="1"]').first().evaluate(el=>parseFloat(el.style.left))>=33);
 
   // Modifier selection and group drag preserve relative spacing; undo is atomic.
   await page.locator('#undoButton').click();
@@ -190,7 +190,7 @@ try {
   await page.mouse.up();
   const curveAfter=await page.locator('input[data-timing="easing"]').inputValue();
   assert.notEqual(curveAfter,curveBefore);
-  assert.match(curveAfter,/^cubic-bezier\\(/);
+  assert.match(curveAfter,/^cubic-bezier\(/);
   assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].effect.getTiming().easing),curveAfter);
   await page.locator('[data-curve-handle="0"]').focus();
   await page.keyboard.press('ArrowRight');
