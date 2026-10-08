@@ -94,8 +94,21 @@ try {
   // Import the downloaded project back into the editor.
   await page.locator('#fileInput').setInputFiles({name:'roundtrip.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(project))});
   assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  // Responsive integrity and touch-size viewport: mobile must stay operable.
+  await page.setViewportSize({width:390,height:844});
+  const mobile=await page.evaluate(()=>({
+    viewport:window.innerWidth,
+    documentWidth:document.documentElement.scrollWidth,
+    canvasWidth:document.getElementById('canvas').getBoundingClientRect().width,
+    inspectorWidth:document.getElementById('inspectorContent').getBoundingClientRect().width
+  }));
+  assert(mobile.documentWidth<=mobile.viewport+1,
+    'Mobile horizontal overflow: '+JSON.stringify(mobile));
+  assert(mobile.canvasWidth>250);
+  assert(mobile.inspectorWidth>280);
+  assert(await page.locator('#exportButton').isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PFx_STUDIO_BROWSER_PASS',JSON.stringify({engine:engineName,checks:22,errors,coreNativeAnimation:true,download:artifact.suggestedFilename()}));
+  console.log('PFx_STUDIO_BROWSER_PASS',JSON.stringify({engine:engineName,checks:26,errors,coreNativeAnimation:true,download:artifact.suggestedFilename()}));
 } finally {
   if(browser)await browser.close();
   server.kill('SIGTERM');
