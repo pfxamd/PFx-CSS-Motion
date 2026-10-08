@@ -40,6 +40,10 @@ try {
   assert.equal(await page.locator('.preset-card').count(),4);
   assert.equal(await page.locator('.preview-card').count(),1);
   assert.equal(await page.locator('.keyframe-marker').count(),6);
+  assert.equal(await page.locator('#undoButton').isDisabled(),true);
+  assert.equal(await page.locator('#redoButton').isDisabled(),true);
+  await page.locator('#playbackSpeed').selectOption('1.5');
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   // Native Web Animations actually applies our model to the stage.
   const native=await page.evaluate(()=>{
     const element=document.getElementById('previewTarget');
@@ -55,12 +59,20 @@ try {
   assert.equal(Number(opacity),0);
   await page.locator('[data-preset="elastic"]').click();
   assert.equal(await page.locator('#motionName').inputValue(),'Soft overshoot');
+  assert.equal(await page.locator('#undoButton').isEnabled(),true);
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   await page.locator('[data-object="shape"]').click();
   assert.equal(await page.locator('.preview-shape').count(),1);
   await page.locator('[data-panel="motion"]').click();
   const field=page.locator('[data-timing="duration"]');
   await field.fill('1600');await field.press('Tab');
   assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  await page.locator('#undoButton').click();
+  assert.equal(await page.locator('#scrub').getAttribute('max'),'1000');
+  assert.equal(await page.locator('#redoButton').isEnabled(),true);
+  await page.locator('#redoButton').click();
+  assert.equal(await page.locator('#scrub').getAttribute('max'),'1600');
+  assert.equal(await page.locator('#previewTarget').evaluate(el=>el.getAnimations()[0].playbackRate),1.5);
   // Add and modify a real keyframe.
   await scrubTo(page,800);
   await page.locator('#addFrameButton').click();
@@ -106,6 +118,7 @@ try {
     'Mobile horizontal overflow: '+JSON.stringify(mobile));
   assert(mobile.canvasWidth>250);
   assert(mobile.inspectorWidth>280);
+  assert.equal(await page.locator('#playbackSpeed').isVisible(),true);
   assert(await page.locator('#exportButton').isVisible());
   assert.deepEqual(errors,[]);
   console.log('PFx_STUDIO_BROWSER_PASS',JSON.stringify({engine:engineName,checks:26,errors,coreNativeAnimation:true,download:artifact.suggestedFilename()}));

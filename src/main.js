@@ -21,7 +21,8 @@ const state = {
   looping: false,
   undo: [],
   redo: [],
-  playing: false
+  playing: false,
+  playbackSpeed: 1
 };
 let controller=null;
 let frameRequest=0;
@@ -54,6 +55,27 @@ function cancelFrame() {
   frameRequest=0;
 }
 function compiled() { return compileCSS(state.motion); }
+
+function updateHistoryButtons() {
+  byId('undoButton').disabled = state.undo.length === 0;
+  byId('redoButton').disabled = state.redo.length === 0;
+}
+
+function updateStageDimensions() {
+  const rect = byId('canvas').getBoundingClientRect();
+  const label = Math.round(rect.width) + ' × ' + Math.round(rect.height) + ' px';
+  byId('canvasDimensions').textContent = label;
+  byId('canvasMeta').textContent = 'CANVAS / ' + label;
+}
+
+function setPlaybackSpeed(value) {
+  const speed = Number(value);
+  if (![0.25, 0.5, 0.75, 1, 1.5, 2].includes(speed))
+    throw new RangeError('Unsupported playback speed');
+  state.playbackSpeed = speed;
+  controller?.setRate(speed);
+  byId('playbackSpeed').value = String(speed);
+}
 
 function renderPresetLibrary() {
   byId('presetList').innerHTML=PRESETS.map((preset,index)=>`
@@ -96,6 +118,7 @@ function initAnimation() {
   state.playing=false;
   if(controller) {controller.dispose();controller=null;}
   controller=createBrowserAnimation(byId('previewTarget'),previewMotion());
+  controller.setRate(state.playbackSpeed);
   controller.seek(clampedTime(state.time));
   updateTimeUI();
 }
@@ -106,6 +129,7 @@ function renderAll({subject=false}={}) {
   renderInspector();
   renderTimeline();
   initAnimation();
+  updateHistoryButtons();
 }
 
 function updateTimeUI() {
@@ -178,6 +202,7 @@ function setLoop(enabled) {
   const base=state.motion;
   const motion={...base,timing:{...base.timing,iterations:enabled?Infinity:base.timing.iterations}};
   controller=createBrowserAnimation(byId('previewTarget'),motion);
+  controller.setRate(state.playbackSpeed);
   controller.seek(at);
   state.playing=false;
   if(wasPlaying)togglePlay();
@@ -198,6 +223,7 @@ function updateMotion(next,{index=state.selectedFrame,preset=null}={}) {
     state.undo.push({motion:previous,time:oldTime,preset:oldPreset});
     if(state.undo.length>60)state.undo.shift();
     state.redo.length=0;
+    updateHistoryButtons();
     return true;
   } catch(error) {
     state.motion=previous;state.preset=oldPreset;state.time=oldTime;
@@ -356,6 +382,8 @@ document.addEventListener('click',event=>{
   }
   switch(event.target.closest('button')?.id) {
     case 'playButton':togglePlay();break;
+    case 'undoButton':history('undo');break;
+    case 'redoButton':history('redo');break;
     case 'toStart':seek(0);break;
     case 'toEnd':seek(duration());break;
     case 'repeatButton':setLoop(!state.looping);break;
@@ -378,6 +406,7 @@ document.addEventListener('click',event=>{
   }
 });
 byId('scrub').addEventListener('input',event=>seek(Number(event.target.value)));
+byId('playbackSpeed').addEventListener('change',event=>setPlaybackSpeed(event.target.value));
 byId('inspectorContent').addEventListener('change',event=>{
   const item=event.target;
   if(item.dataset.timing) {
@@ -435,4 +464,10 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('pagehide',()=>{cancelFrame();controller?.dispose()});
 
 renderAll({subject:true});
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(updateStageDimensions).observe(byId('canvas'));
+} else {
+  window.addEventListener('resize', updateStageDimensions, { passive: true });
+  updateStageDimensions();
+}
 toast('Your motion studio is ready');

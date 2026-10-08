@@ -297,3 +297,59 @@ background-size:28px 28px;border-radius:6px;color:#3e3840;isolation:isolate;}
 @media (prefers-reduced-motion: reduce) {
   .button,.preset-card,.keyframe-marker span {transition:none}
 }
+
+
+/* Polished editor controls: efficient, readable, and intentionally sized. */
+.history-actions { display:flex; gap:3px; align-items:center; margin-right:8px; padding-right:9px; border-right:1px solid var(--border); }
+.history-button { width:33px; height:33px; display:grid;place-items:center; border:1px solid transparent; border-radius:6px; color:#c7c6d0; background:transparent; font-size:21px; line-height:1; }
+.history-button:hover:not(:disabled) { background:#292a33; border-color:#44404b; color:#fff; }
+.history-button:disabled { opacity:.32; cursor:default; }
+.speed-label { color:#9898a6; font:600 10px 'Manrope',sans-serif; margin-left:4px; }
+.speed-control { height:29px; width:66px; padding:0 7px; border-radius:6px; border:1px solid #393944; background:#252630; color:#e9e7ed; font:700 11px 'Manrope',sans-serif; font-variant-numeric:tabular-nums; }
+.speed-control:hover { border-color:#756370; }
+.transport-play { height:38px; min-width:38px; border-color:#76605c; background:#40313a; }
+.transport-btn { flex-shrink:0; }
+.transport-time { font-size:11px; margin-left:5px; }
+.preset-card strong,.track-label,.field-heading { font-size:11.5px; }
+.preset-caption,.panel-intro p,.inspector-top p { font-size:11px; }
+.eyebrow { font-size:10px; letter-spacing:1.45px; }
+.section-title strong { font-size:12px; }
+.section-title span { font-size:10px; }
+.field input,.field select,.property-item input,.add-property-form input { font-size:12px; }
+.field-heading small { font-size:10px; }
+.timeline-bottom,.inspector-bottom,.statusbar { font-size:10px; }
+.ruler-marks {font-size:10px;}
+.preset-number {font-size:10px;}
+.canvas-corner { font-size:9px; }
+.inspector-tip p { font-size:11px; }
+.inspector-tip p strong { font-size:11px; }
+.track-label {color:#c2c0cd;}
+.keyframe-marker {width:29px;height:29px;}
+.keyframe-marker:focus-visible {outline-offset:1px;}
+.inspector-top {padding-top:23px;padding-bottom:18px;}
+.inspector-top h2 {font-size:21px;margin:10px 0 4px;}
+.inspector-section {padding-top:17px;padding-bottom:15px;}
+.inspector-content {scrollbar-gutter:stable;}
+.transport {min-width:0;}
+@media (max-width:1380px) {
+  .history-actions {margin-right:3px;padding-right:5px;}
+  .speed-label {display:none;}
+}
+@media (max-width:1150px) {
+  .history-button {width:29px;height:31px;}
+  .speed-control {width:60px;}
+  .transport-time {margin-left:2px;font-size:10px;}
+}
+@media (max-width:920px) {
+  .history-actions {margin-right:5px;}
+  .transport {flex-wrap:wrap;justify-content:flex-end;}
+}
+@media (max-width:690px) {
+  .history-actions {margin-right:3px;padding-right:4px;}
+  .history-button {width:29px;height:30px;}
+  .transport {flex-wrap:wrap;gap:4px;}
+  .transport-time {font-size:10px;}
+  .speed-control {width:58px;}
+  .stage-tools .muted-tool {display:none;}
+  .timeline-bottom {font-size:10px;}
+}

@@ -18,6 +18,10 @@
       <div class="topbar-center"><span class="topbar-divider"></span><span class="workspace-label">Studio</span><span class="breadcrumb-chevron">/</span><input id="motionName" type="text" value="Lift & reveal" aria-label="Motion name" maxlength="65"></div>
       <div class="topbar-actions">
         <span class="engine-indicator"><span class="pulse-dot"></span>Native preview</span>
+        <div class="history-actions" role="group" aria-label="Change history">
+          <button id="undoButton" class="history-button" type="button" title="Undo (Ctrl+Z)" aria-label="Undo last change" disabled>↶</button>
+          <button id="redoButton" class="history-button" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo last change" disabled>↷</button>
+        </div>
         <button id="importButton" class="button button-muted" type="button">Import <span class="hide-compact">JSON</span></button>
         <button id="saveButton" class="button button-muted" type="button">Save project</button>
         <button id="exportButton" class="button button-primary" type="button">Export CSS <span aria-hidden="true">↗</span></button>
@@ -41,12 +45,12 @@
       <section class="studio" aria-label="Preview and timeline">
         <div class="studio-heading">
           <div><span class="eyebrow">02 / CANVAS</span><h1>Motion playground</h1></div>
-          <div class="stage-tools"><span class="stage-tool"><span class="status-led"></span> LIVE</span><span class="stage-tool muted-tool">100% · Original</span></div>
+          <div class="stage-tools"><span class="stage-tool"><span class="status-led"></span> LIVE</span><span class="stage-tool muted-tool" id="canvasDimensions">Canvas</span></div>
         </div>
         <div class="canvas-wrapper">
           <div class="canvas" id="canvas">
             <div class="canvas-corner canvas-top-left">PFx / PREVIEW SPACE <span class="corner-cross">+</span></div>
-            <div class="canvas-corner canvas-top-right">1200 × 800</div>
+            <div class="canvas-corner canvas-top-right" id="canvasMeta">STUDIO CANVAS</div>
             <div id="previewTarget" class="preview-target preview-card" aria-label="Animation preview object">
               <div class="specimen-bar"><span class="specimen-bar-brand">pfx / 01</span><span class="specimen-mini-dots"><i></i><i></i><i></i></span></div>
               <div class="specimen-content"><span class="specimen-overline">IN MOTION</span><strong>Form follows<br><em>feeling.</em></strong><span class="specimen-bottom">A BETTER KIND OF MOVEMENT <span>↗</span></span></div>
@@ -65,6 +69,12 @@
               <button id="toEnd" class="transport-btn" type="button" aria-label="Go to end" title="Go to end">▶Ⅰ</button>
               <span class="transport-divider"></span>
               <button id="repeatButton" class="transport-btn" type="button" aria-label="Toggle looping" title="Loop preview" aria-pressed="false">↻</button>
+              <label class="speed-label" for="playbackSpeed">Speed</label>
+              <select id="playbackSpeed" class="speed-control" aria-label="Preview playback speed" title="Preview playback speed">
+                <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+                <option value="0.75">0.75×</option><option value="1" selected>1×</option>
+                <option value="1.5">1.5×</option><option value="2">2×</option>
+              </select>
               <span id="transportTime" class="transport-time">00:00.60 <b>/</b> 00:01.20</span>
             </div>
           </div>
@@ -78,20 +88,20 @@
               </div>
             </div>
             <div id="propertyTracks" class="property-tracks"></div>
-            <div class="timeline-bottom"><span>Click a diamond to edit its keyframe</span><span>SPACE — Play / pause &nbsp; · &nbsp; CTRL Z — Undo</span></div>
+            <div class="timeline-bottom"><span>Choose a diamond to edit its keyframe</span><span>SPACE — Play / pause &nbsp; · &nbsp; CTRL Z — Undo</span></div>
           </div>
         </section>
       </section>
 
       <aside class="inspector-panel" aria-label="Animation settings">
-        <div class="inspector-top"><span class="eyebrow">04 / INSPECTOR</span><h2>Fine tune.</h2><p>Control every detail.</p></div>
+        <div class="inspector-top"><span class="eyebrow">04 / INSPECTOR</span><h2>Properties</h2><p>Timing and keyframe values.</p></div>
         <nav class="inspector-tabs" aria-label="Inspector panels">
           <button type="button" class="inspector-tab active" data-panel="motion" aria-selected="true">Motion</button>
           <button type="button" class="inspector-tab" data-panel="keyframe" aria-selected="false">Keyframe</button>
           <button type="button" class="inspector-tab" data-panel="code" aria-selected="false">Code</button>
         </nav>
         <div id="inspectorContent" class="inspector-content"></div>
-        <div class="inspector-bottom"><span class="inspector-bottom-symbol">⌘</span> Every change is previewed live</div>
+        <div class="inspector-bottom"><span class="inspector-bottom-symbol">⌘</span> Changes update the native preview</div>
       </aside>
     </main>
 
