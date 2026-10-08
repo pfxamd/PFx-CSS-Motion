@@ -1,6 +1,6 @@
 {
   "name": "pfx-css-motion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Native CSS motion editor powered by PFx CSS Motion Core v1.0.0",
