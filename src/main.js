@@ -420,10 +420,12 @@ function renderTimeline() {
   if(!properties.length)byId('propertyTracks').innerHTML='<p class="no-properties">Select a keyframe and add a property.</p>';
   updateTimeUI();
 }
-function selectFrame(index,{additive=false,range=false}={}) {
+function selectFrame(index,{additive=false,range=false,preserve=false}={}) {
   const max=state.motion.keyframes.length-1;
   index=Math.max(0,Math.min(max,index));
-  if(range) {
+  if(preserve) {
+    // Dragging a member of a multi-selection moves the whole group.
+  } else if(range) {
     const from=Math.min(state.selectedFrame,index),to=Math.max(state.selectedFrame,index);
     state.selectedFrames=Array.from({length:to-from+1},(_,i)=>from+i);
   } else if(additive) {
@@ -524,7 +526,8 @@ function beginPointerSession(event) {
   const index=Number(marker.dataset.frameIndex);
   const track=marker.closest('.keyframe-track');
   const bounds=track.getBoundingClientRect();
-  selectFrame(index,{additive:event.ctrlKey||event.metaKey,range:event.shiftKey});
+  selectFrame(index,{additive:event.ctrlKey||event.metaKey,range:event.shiftKey,
+    preserve:!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&state.selectedFrames.includes(index)});
   pointerSession={
     kind:'frame',pointerId:event.pointerId,originalMotion:copyMotion(state.motion),
     originalTime:state.time,originalPreset:state.preset,
