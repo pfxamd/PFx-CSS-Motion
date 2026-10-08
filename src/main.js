@@ -303,7 +303,7 @@ function renderCurveEditor(easing) {
   const curve=curveDrawing(parsed);
   return `<div class="curve-editor">
     <div class="curve-editor-heading"><strong>VISUAL EASING</strong><span>Drag the handles</span></div>
-    <svg id="curveGraph" viewBox="0 0 300 280" aria-label="Interactive Bézier easing graph" role="img">
+    <svg id="curveGraph" viewBox="0 0 300 280" aria-label="Interactive Bézier easing graph" role="group">
       <rect x="40" y="10" width="220" height="265" fill="transparent"/>
       <path d="M 40 210 H 260 M 40 105 H 260 M 40 10 V 275 M 260 10 V 275" class="curve-gridline"/>
       <path d="M 40 210 L 260 105" class="curve-diagonal"/>
@@ -416,7 +416,7 @@ function renderTimeline() {
   byId('propertyTracks').innerHTML=properties.map((name,row)=>`
     <div class="property-track"><div class="track-label"><span class="track-label-icon">${['◇','≈','✳','◌'][row%4]}</span><span title="${escapeHtml(name)}">${escapeHtml(name)}</span></div>
     <div class="keyframe-track" style="--playhead:${clampedTime(state.time)/duration()*100}%">
-      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrames.includes(index)?'marker-selected':''}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
+      ${motion.keyframes.map((frame,index)=>name in frame?`<button type="button" data-frame-index="${index}" class="keyframe-marker ${state.selectedFrames.includes(index)?'marker-selected':''}" aria-pressed="${state.selectedFrames.includes(index)}" style="left:${frame.offset*100}%" title="${escapeHtml(name)} at ${Math.round(frame.offset*100)}%" aria-label="Edit keyframe ${index+1} ${escapeHtml(name)}"><span></span></button>`:'').join('')}
     </div></div>`).join('');
   if(!properties.length)byId('propertyTracks').innerHTML='<p class="no-properties">Select a keyframe and add a property.</p>';
   updateTimeUI();
