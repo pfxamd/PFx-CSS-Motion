@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111116">
+  <meta name="description" content="PFx CSS Motion — an expressive, precise visual CSS animation studio.">
+  <title>PFx CSS Motion — Motion Studio</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-symbol" aria-hidden="true"><span>p</span><span>f</span><span>x</span></div>
+        <span class="brand-name">CSS Motion</span>
+        <span class="edition">ALPHA 0.1</span>
+      </div>
+      <div class="topbar-center"><span class="topbar-divider"></span><span class="workspace-label">Studio</span><span class="breadcrumb-chevron">/</span><input id="motionName" type="text" value="Lift & reveal" aria-label="Motion name" maxlength="65"></div>
+      <div class="topbar-actions">
+        <span class="engine-indicator"><span class="pulse-dot"></span>Native preview</span>
+        <button id="importButton" class="button button-muted" type="button">Import <span class="hide-compact">JSON</span></button>
+        <button id="saveButton" class="button button-muted" type="button">Save project</button>
+        <button id="exportButton" class="button button-primary" type="button">Export CSS <span aria-hidden="true">↗</span></button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="library-panel" aria-label="Motion presets and objects">
+        <div class="panel-intro"><span class="eyebrow">01 / LIBRARY</span><h2>Motion presets</h2><p>Start from a behavior. Make it your own.</p></div>
+        <div id="presetList" class="preset-list" role="group" aria-label="Choose animation preset"></div>
+        <div class="library-divider"></div>
+        <div class="object-heading"><span class="eyebrow">PREVIEW SUBJECT</span><span class="small-description">Select a specimen</span></div>
+        <div id="objectSelector" class="object-list" aria-label="Preview subject">
+          <button type="button" class="object-choice selected" data-object="card"><span class="object-icon">▤</span><span>Card</span></button>
+          <button type="button" class="object-choice" data-object="type"><span class="object-icon">Aa</span><span>Type</span></button>
+          <button type="button" class="object-choice" data-object="shape"><span class="object-icon">◉</span><span>Shape</span></button>
+        </div>
+        <div class="library-footnote"><span class="footnote-rule"></span>Built on PFx CSS Motion Core <strong>v1.0.0</strong></div>
+      </aside>
+
+      <section class="studio" aria-label="Preview and timeline">
+        <div class="studio-heading">
+          <div><span class="eyebrow">02 / CANVAS</span><h1>Motion playground</h1></div>
+          <div class="stage-tools"><span class="stage-tool"><span class="status-led"></span> LIVE</span><span class="stage-tool muted-tool">100% · Original</span></div>
+        </div>
+        <div class="canvas-wrapper">
+          <div class="canvas" id="canvas">
+            <div class="canvas-corner canvas-top-left">PFx / PREVIEW SPACE <span class="corner-cross">+</span></div>
+            <div class="canvas-corner canvas-top-right">1200 × 800</div>
+            <div id="previewTarget" class="preview-target preview-card" aria-label="Animation preview object">
+              <div class="specimen-bar"><span class="specimen-bar-brand">pfx / 01</span><span class="specimen-mini-dots"><i></i><i></i><i></i></span></div>
+              <div class="specimen-content"><span class="specimen-overline">IN MOTION</span><strong>Form follows<br><em>feeling.</em></strong><span class="specimen-bottom">A BETTER KIND OF MOVEMENT <span>↗</span></span></div>
+            </div>
+            <div class="canvas-corner canvas-bottom-left"><span class="canvas-running-dot"></span> RENDERED IN YOUR BROWSER</div>
+            <div class="canvas-corner canvas-bottom-right" id="canvasTimestamp">00:00.60</div>
+          </div>
+        </div>
+
+        <section class="timeline" aria-labelledby="timelineTitle">
+          <div class="timeline-header">
+            <div class="timeline-name"><span class="eyebrow">03 / SEQUENCE</span><h2 id="timelineTitle">Timeline <span id="frameCount" class="count-pill">2 frames</span></h2></div>
+            <div class="transport" aria-label="Playback controls">
+              <button id="toStart" class="transport-btn" type="button" aria-label="Go to start" title="Go to start">Ⅰ◀</button>
+              <button id="playButton" class="transport-btn transport-play" type="button" aria-label="Play" title="Play / pause (Space)">▶</button>
+              <button id="toEnd" class="transport-btn" type="button" aria-label="Go to end" title="Go to end">▶Ⅰ</button>
+              <span class="transport-divider"></span>
+              <button id="repeatButton" class="transport-btn" type="button" aria-label="Toggle looping" title="Loop preview" aria-pressed="false">↻</button>
+              <span id="transportTime" class="transport-time">00:00.60 <b>/</b> 00:01.20</span>
+            </div>
+          </div>
+          <div class="timeline-body">
+            <div class="track-title-row"><span class="track-title">PROPERTIES</span><button id="addFrameButton" class="text-action" type="button">+ Add keyframe</button></div>
+            <div class="ruler-area">
+              <div class="ruler-left">Time <span>(s)</span></div>
+              <div class="ruler-right">
+                <div class="ruler-marks" id="rulerMarks"></div>
+                <input type="range" id="scrub" class="scrub" min="0" max="1200" step="1" value="600" aria-label="Scrub animation timeline">
+              </div>
+            </div>
+            <div id="propertyTracks" class="property-tracks"></div>
+            <div class="timeline-bottom"><span>Click a diamond to edit its keyframe</span><span>SPACE — Play / pause &nbsp; · &nbsp; CTRL Z — Undo</span></div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="inspector-panel" aria-label="Animation settings">
+        <div class="inspector-top"><span class="eyebrow">04 / INSPECTOR</span><h2>Fine tune.</h2><p>Control every detail.</p></div>
+        <nav class="inspector-tabs" aria-label="Inspector panels">
+          <button type="button" class="inspector-tab active" data-panel="motion" aria-selected="true">Motion</button>
+          <button type="button" class="inspector-tab" data-panel="keyframe" aria-selected="false">Keyframe</button>
+          <button type="button" class="inspector-tab" data-panel="code" aria-selected="false">Code</button>
+        </nav>
+        <div id="inspectorContent" class="inspector-content"></div>
+        <div class="inspector-bottom"><span class="inspector-bottom-symbol">⌘</span> Every change is previewed live</div>
+      </aside>
+    </main>
+
+    <footer class="statusbar"><span><span class="status-rect"></span> Motion document · schema v1</span><span id="toast" class="toast" role="status" aria-live="polite"></span><span>PFx Studio <span class="statusbar-separator">/</span> Original motion engine</span></footer>
+  </div>
+
+  <dialog id="exportDialog" class="export-dialog" aria-label="Export animation CSS">
+    <div class="dialog-head"><div><span class="eyebrow">READY TO USE</span><h2>Your animation, as CSS.</h2></div><button id="closeDialog" type="button" class="dialog-close" aria-label="Close">×</button></div>
+    <div class="dialog-body"><p>Copy this stylesheet and apply the generated class name to the element you want to animate.</p><div class="generated-class">CLASS <code id="generatedClass"></code></div><pre class="code-view"><code id="exportCode"></code></pre></div>
+    <div class="dialog-actions"><button id="downloadCSS" class="button button-muted" type="button">Download .css</button><button id="copyCSS" class="button button-primary" type="button">Copy CSS</button></div>
+  </dialog>
+  <input id="fileInput" type="file" accept=".json,application/json" hidden>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
