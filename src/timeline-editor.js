@@ -89,6 +89,6 @@ export function moveCurveHandle(points, index, x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) throw new RangeError('Curve coordinates must be finite');
   const result = [...points];
   result[index * 2] = round(clamp(x, 0, 1));
-  result[index * 2 + 1] = round(clamp(y, -0.5, 1.5));
+  result[index * 2 + 1] = round(clamp(y, -0.5, 1.6));
   return result;
 }
