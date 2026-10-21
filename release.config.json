@@ -1,0 +1,23 @@
+{
+  "product": "PFx CSS Motion",
+  "channel": "Alpha",
+  "baseline": "e948f9797b828947ede17d6c5be02f228d5ee422",
+  "baseVersion": "0.2.0",
+  "sourcePaths": [
+    "src",
+    "app",
+    "apps",
+    "public",
+    "assets",
+    "index.html",
+    "diagnostics",
+    "scripts",
+    "release.config.json",
+    "vite.config.ts",
+    "vite.config.js",
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    ".github/workflows"
+  ]
+}
