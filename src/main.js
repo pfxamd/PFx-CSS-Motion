@@ -1,3 +1,19 @@
+/**
+ * ┌──────────────────────────────────────────────┐
+ * │                                              │
+ * │  PFxamd                                      │
+ * │  Ahmed                                       │
+ * │                                              │
+ * └──────────────────────────────────────────────┘
+ *
+ * @project     PFx CSS Motion
+ * @author      Ahmed
+ * @brand       PFxamd
+ * @website     https://www.pfxamd.com
+ * @repository  https://github.com/pfxamd/PFx-CSS-Motion
+ * @license     Apache-2.0
+ */
+
 import './style.css';
 import {
   shiftKeyframes, insertSampledFrame, parseCubicCurve,
