@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { resolveRelease } from '../scripts/pfx-release.mjs';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { chromium, firefox, webkit } from 'playwright';
@@ -38,7 +39,7 @@ try {
   assert.equal(response.status(),200);
   await page.locator('.preset-card').first().waitFor();
   assert.equal((await page.locator('.brand-name').textContent()).trim(),'PFx CSS Motion');
-  assert.equal((await page.locator('.edition').textContent()).trim(),'ALPHA 0.2');
+  assert.equal((await page.locator('.edition').textContent()).trim(),resolveRelease().label);
   const badgeAppearance=await page.locator('.edition').evaluate(element=>{
     const style=getComputedStyle(element);
     const rect=element.getBoundingClientRect();
